@@ -51,6 +51,30 @@ nano /home/openclaw/taegan-openclaw/.env   # confirm TWILIO_ACCOUNT_SID / AUTH_T
 systemctl start taegan-openclaw
 ```
 
+## 3b. Let Taegan's replies stop escalations
+
+SMS has no read receipts, so a **reply from Taegan** (any text: "ok", "done"…)
+cancels the pending 5-minute escalation calls. NT-005 (phone down at 9:50 PM)
+still always escalates. Escalation calls also use this server to play the ElevenLabs voice.
+
+1. Add to `/home/openclaw/taegan-openclaw/.env`:
+   ```
+   PUBLIC_BASE_URL=http://179.236.242.215:8080
+   WEBHOOK_PORT=8080
+   ```
+   Then run `systemctl restart taegan-openclaw`.
+2. **Twilio Console** → Phone Numbers → Active numbers → your number →
+   Messaging → **A message comes in**: Webhook, `http://179.236.242.215:8080/sms`,
+   HTTP POST. Save.
+3. **Hostinger hPanel** → VPS → Firewall: if a firewall is enabled there, allow TCP port 8080.
+   (The setup script already opens it in the server's own firewall.)
+4. Test: text anything to the Twilio number from Taegan's phone, then run
+   `grep webhook /home/openclaw/.openclaw/logs/openclaw.stdout.log | tail -3`.
+   You should see `Reply from Taegan — cancelled N escalation timer(s)`.
+
+Without `PUBLIC_BASE_URL`, everything else still works, but every routine
+text escalates to a call after 5 minutes and calls use Twilio's built-in voice.
+
 ## 4. OpenClaw gateway and Claude API
 
 ```bash
