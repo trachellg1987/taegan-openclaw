@@ -20,6 +20,7 @@ const TEST_CONFIG = {
     twilio_from_number: '+15550000001',
     elevenlabs_api_key: 'el-test-key',
     elevenlabs_voice_id: 'voice-test-id',
+    public_base_url: 'http://203.0.113.10:8080',
   },
 };
 
@@ -57,25 +58,6 @@ jest.mock('https', () => {
     }),
   };
 });
-
-// ─── Mock: http (local audio server) ─────────────────────────────────────────
-// serveAudioLocally starts a server on a random port; mock returns port 39999
-// and calls the listen callback via nextTick so the promise resolves.
-
-jest.mock('http', () => ({
-  createServer: jest.fn(() => {
-    const server = {
-      _port: 39999,
-      listen: jest.fn(function (port, host, cb) {
-        process.nextTick(cb);
-        return this;
-      }),
-      close: jest.fn(),
-      address: jest.fn(function () { return { port: this._port }; }),
-    };
-    return server;
-  }),
-}));
 
 // ─── Mock: fs ─────────────────────────────────────────────────────────────────
 // createWriteStream returns a Writable that accepts data and emits 'finish'.
@@ -140,12 +122,14 @@ describe('ESC-002: Twilio call placed (sandbox mock)', () => {
     );
   });
 
-  test('calls.create twiml contains a <Play> tag with the audio URL', async () => {
+  test('twiml plays the ElevenLabs audio from the public URL', async () => {
     await escalateCall('Brush teeth!', 'NT-003', jest.fn());
 
     const { twiml } = mockCallsCreate.mock.calls[0][0];
-    expect(twiml).toContain('<Play>');
-    expect(twiml).toContain('http://127.0.0.1:39999');
+    expect(twiml).toMatch(
+      /<Play>http:\/\/203\.0\.113\.10:8080\/audio\/tts-\d+-[a-f0-9]{16}\.mp3<\/Play>/
+    );
+    expect(twiml).not.toContain('127.0.0.1');
   });
 
   test('ElevenLabs API is called with the message text', async () => {
@@ -158,12 +142,42 @@ describe('ESC-002: Twilio call placed (sandbox mock)', () => {
     expect(opts.path).toContain(TEST_CONFIG.env.elevenlabs_voice_id);
   });
 
-  test('audio server is closed after call is placed (finally block)', async () => {
-    const http = require('http');
+  test('without PUBLIC_BASE_URL the call reads the message with Twilio voice', async () => {
+    const https = require('https');
+    getConfig.mockReturnValue({
+      ...TEST_CONFIG,
+      env: { ...TEST_CONFIG.env, public_base_url: '' },
+    });
     await escalateCall('Go to bed.', 'NT-006', jest.fn());
 
-    const serverInstance = http.createServer.mock.results[0].value;
-    expect(serverInstance.close).toHaveBeenCalledTimes(1);
+    const { twiml } = mockCallsCreate.mock.calls[0][0];
+    expect(twiml).toContain('<Say voice="alice">Go to bed.</Say>');
+    expect(twiml).not.toContain('<Play>');
+    expect(https.request).not.toHaveBeenCalled();
+  });
+
+  test('falls back to Twilio voice when ElevenLabs fails', async () => {
+    const https = require('https');
+    const stderr = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    https.request.mockImplementationOnce((opts, cb) => {
+      const { Readable } = require('stream');
+      const res = new Readable({ read() {} });
+      res.statusCode = 401;
+      process.nextTick(() => cb(res));
+      return { write: jest.fn(), end: jest.fn(), on: jest.fn() };
+    });
+
+    await escalateCall('Shower now.', 'NT-002', jest.fn());
+
+    const { twiml } = mockCallsCreate.mock.calls[0][0];
+    expect(twiml).toContain('<Say voice="alice">Shower now.</Say>');
+    expect(stderr).toHaveBeenCalledWith(expect.stringContaining('HTTP 401'));
+    stderr.mockRestore();
+  });
+
+  test('message text is XML-escaped in the twiml', () => {
+    const { buildTwiml } = require('../src/escalation/call');
+    expect(buildTwiml('Tom & Jerry <now>', null)).toContain('Tom &amp; Jerry &lt;now&gt;');
   });
 
   test('onUnanswered fires when call status is no-answer', async () => {

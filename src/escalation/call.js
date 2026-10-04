@@ -3,15 +3,17 @@
 /**
  * ESC-002: Twilio voice call with ElevenLabs TTS.
  *
- * Generates audio from message text via ElevenLabs, hosts it temporarily,
- * then places a Twilio call that plays that audio. If unanswered after 30s,
- * fires ESC-003 (parent alert).
+ * Generates audio from message text via ElevenLabs and places a Twilio call
+ * that plays it. The audio is served publicly by src/webhook.js (Twilio can't
+ * reach localhost); without PUBLIC_BASE_URL, or if ElevenLabs fails, the call
+ * reads the message with Twilio's built-in voice instead. If unanswered after
+ * 30s, fires ESC-003 (parent alert).
  */
 
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const http = require('http');
+const crypto = require('crypto');
 const { getConfig } = require('../config');
 
 const AUDIO_DIR = path.join(process.env.HOME, '.openclaw', 'workspace', 'tts-cache');
@@ -27,7 +29,10 @@ async function generateSpeech(text) {
   const config = getConfig();
   fs.mkdirSync(AUDIO_DIR, { recursive: true });
 
-  const audioPath = path.join(AUDIO_DIR, `tts-${Date.now()}.mp3`);
+  // Random suffix so the public /audio/ URL can't be guessed
+  const audioPath = path.join(
+    AUDIO_DIR, `tts-${Date.now()}-${crypto.randomBytes(8).toString('hex')}.mp3`
+  );
 
   const body = JSON.stringify({
     text,
@@ -66,42 +71,52 @@ async function generateSpeech(text) {
 
 // ─── Twilio call ─────────────────────────────────────────────────────────────
 
+function escapeXml(text) {
+  return text.replace(/[<>&'"]/g, c => ({
+    '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;',
+  })[c]);
+}
+
 /**
- * Serve the audio file temporarily over localhost so Twilio can fetch it.
- * Returns { url, close } — call close() when done.
+ * TwiML for the call: play the ElevenLabs audio when it is publicly hosted,
+ * otherwise read the message with Twilio's built-in voice.
  */
-function serveAudioLocally(audioPath) {
-  return new Promise((resolve) => {
-    const server = http.createServer((req, res) => {
-      const data = fs.readFileSync(audioPath);
-      res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Content-Length': data.length });
-      res.end(data);
-    });
-    server.listen(0, '127.0.0.1', () => {
-      const { port } = server.address();
-      resolve({
-        url: `http://127.0.0.1:${port}/audio.mp3`,
-        close: () => server.close(),
-      });
-    });
-  });
+function buildTwiml(message, audioUrl) {
+  const body = audioUrl
+    ? `<Play>${escapeXml(audioUrl)}</Play>`
+    : `<Say voice="alice">${escapeXml(message)}</Say>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  ${body}
+</Response>`;
+}
+
+/**
+ * Generate ElevenLabs audio and return its public URL (served by src/webhook.js),
+ * or null if there is no public URL, no ElevenLabs key, or generation fails.
+ */
+async function getPublicAudioUrl(message) {
+  const { env } = getConfig();
+  if (!env.public_base_url || !env.elevenlabs_api_key || !env.elevenlabs_voice_id) return null;
+  try {
+    const audioPath = await generateSpeech(message);
+    return `${env.public_base_url}/audio/${path.basename(audioPath)}`;
+  } catch (err) {
+    process.stderr.write(`[call] ElevenLabs failed, using Twilio voice: ${err.message}\n`);
+    return null;
+  }
 }
 
 /**
  * Place the Twilio call.
  * Returns the call SID.
  */
-async function placeTwilioCall(audioUrl, onUnanswered) {
+async function placeTwilioCall(twiml, onUnanswered) {
   const config = getConfig();
   const twilio = require('twilio')(
     config.env.twilio_account_sid,
     config.env.twilio_auth_token
   );
-
-  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Play>${audioUrl}</Play>
-</Response>`;
 
   const call = await twilio.calls.create({
     from: config.env.twilio_from_number,
@@ -143,19 +158,10 @@ async function placeTwilioCall(audioUrl, onUnanswered) {
  * @param {Function} onUnanswered - Called with { step, message } if call unanswered
  */
 async function escalateCall(message, step, onUnanswered) {
-  let audioPath;
-  let audioServer;
-
-  try {
-    audioPath = await generateSpeech(message);
-    audioServer = await serveAudioLocally(audioPath);
-    await placeTwilioCall(audioServer.url, () => {
-      onUnanswered({ step, message });
-    });
-  } finally {
-    if (audioServer) audioServer.close();
-    // Keep the audio file for logging; pruned by DC-005 snapshot cleanup
-  }
+  const audioUrl = await getPublicAudioUrl(message);
+  await placeTwilioCall(buildTwiml(message, audioUrl), () => {
+    onUnanswered({ step, message });
+  });
 }
 
-module.exports = { escalateCall };
+module.exports = { escalateCall, buildTwiml };

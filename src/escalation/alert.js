@@ -72,10 +72,17 @@ async function runEscalation({ step, message }) {
 
   appendToLog({ event: 'ESCALATION_START', step, message });
 
-  await escalateCall(message, step, ({ step: s, message: m }) => {
-    appendToLog({ event: 'CALL_UNANSWERED', step: s, message: m });
-    alertParent(s, m);
-  });
+  try {
+    await escalateCall(message, step, ({ step: s, message: m }) => {
+      appendToLog({ event: 'CALL_UNANSWERED', step: s, message: m });
+      alertParent(s, m);
+    });
+  } catch (err) {
+    // Call could not be placed — go straight to the parent rather than
+    // letting the rejection crash the process with no alert sent.
+    appendToLog({ event: 'CALL_FAILED', step, message, error: err.message });
+    alertParent(step, message);
+  }
 }
 
 module.exports = { runEscalation, alertParent, appendToLog, readLog };

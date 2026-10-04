@@ -16,6 +16,7 @@ const { scheduleScrapers } = require('./scrapers');
 const { scheduleGmailMonitor } = require('./scrapers/gmail');
 const { scheduleDashboard } = require('./dashboard');
 const { scheduleHealthMonitor } = require('./health-monitor');
+const { startWebhookServer } = require('./webhook');
 
 function log(msg) {
   process.stdout.write(`[${new Date().toISOString()}] [openclaw] ${msg}\n`);
@@ -31,6 +32,9 @@ async function main() {
   // Replay any escalation timers that were active before last restart
   replayOnStartup();
   log('Escalation timers replayed');
+
+  // Inbound SMS replies (cancel escalations) and public TTS audio for calls
+  startWebhookServer();
 
   // Start all routine schedulers
   scheduleMorning();

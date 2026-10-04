@@ -78,6 +78,8 @@ function loadConfig() {
       classlink_url: process.env.CLASSLINK_URL,
       classlink_user: process.env.CLASSLINK_USER,
       classlink_pass: process.env.CLASSLINK_PASS,
+      public_base_url: (process.env.PUBLIC_BASE_URL || '').replace(/\/+$/, ''),
+      webhook_port: process.env.WEBHOOK_PORT,
     }),
   });
 }

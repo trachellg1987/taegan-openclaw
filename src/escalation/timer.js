@@ -92,6 +92,17 @@ function cancelTimer(id) {
 }
 
 /**
+ * Cancel every pending timer — used when Taegan replies by SMS, since SMS has
+ * no per-message read receipts. Returns the number of timers cancelled.
+ */
+function cancelAllTimers() {
+  const ids = [..._activeTimers.keys()];
+  ids.forEach(cancelTimer);
+  _saveState({});
+  return ids.length;
+}
+
+/**
  * Replay any timers that were persisted but not yet fired (e.g. after restart).
  * Timers that already expired trigger escalation immediately.
  *
@@ -127,4 +138,4 @@ function _activeCount() {
   return _activeTimers.size;
 }
 
-module.exports = { startTimer, cancelTimer, replayPersistedTimers, _activeCount };
+module.exports = { startTimer, cancelTimer, cancelAllTimers, replayPersistedTimers, _activeCount };

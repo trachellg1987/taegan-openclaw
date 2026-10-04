@@ -91,3 +91,45 @@ describe('ESC-004: escalation log', () => {
     expect(entries.every(e => e.ts)).toBe(true); // every entry has timestamp
   });
 });
+
+// ─── SMS reply: cancel all pending timers ────────────────────────────────────
+
+describe('ESC-001: cancelAllTimers (SMS reply)', () => {
+  test('cancels every pending timer so none escalate', () => {
+    jest.useFakeTimers();
+    const { cancelAllTimers } = require('../src/escalation/timer');
+    const onEscalate = jest.fn();
+
+    startTimer('all-1', 'Wake up!', 'MR-001', onEscalate);
+    startTimer('all-2', 'Push-ups!', 'MR-002', onEscalate);
+
+    expect(cancelAllTimers()).toBe(2);
+    expect(_activeCount()).toBe(0);
+
+    jest.advanceTimersByTime(6 * 60 * 1000);
+    expect(onEscalate).not.toHaveBeenCalled();
+    jest.useRealTimers();
+  });
+
+  test('returns 0 when nothing is pending', () => {
+    const { cancelAllTimers } = require('../src/escalation/timer');
+    expect(cancelAllTimers()).toBe(0);
+  });
+});
+
+// ─── Escalation chain: call cannot be placed ─────────────────────────────────
+
+describe('runEscalation: call failure', () => {
+  test('alerts parent instead of rejecting when the call cannot be placed', async () => {
+    const { runEscalation } = require('../src/escalation/alert');
+    escalateCall.mockRejectedValueOnce(new Error('Twilio down'));
+
+    await expect(runEscalation({ step: 'MR-001', message: 'Wake up!' })).resolves.toBeUndefined();
+
+    expect(sendMessage).toHaveBeenCalledWith(
+      '+15126987332',
+      expect.stringContaining('MR-001')
+    );
+    expect(readLog().some(e => e.event === 'CALL_FAILED' && e.error === 'Twilio down')).toBe(true);
+  });
+});

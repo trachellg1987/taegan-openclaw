@@ -27,8 +27,9 @@ apt-get install -y -qq git curl ca-certificates cron ufw >/dev/null
 timedatectl set-timezone America/Chicago
 ok "git, curl, cron installed; timezone America/Chicago"
 
-step "2. Firewall (SSH only — gateway stays on localhost)"
+step "2. Firewall (SSH + Twilio webhook — gateway stays on localhost)"
 ufw allow OpenSSH >/dev/null
+ufw allow 8080/tcp >/dev/null
 ufw --force enable >/dev/null
 ok "ufw enabled"
 

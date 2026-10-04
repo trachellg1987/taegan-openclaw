@@ -12,11 +12,14 @@
  *   // When read receipt arrives:
  *   disarm('MR-001-2026-03-29T06:00');
  *
+ *   // When Taegan replies by SMS (no per-message read receipts):
+ *   disarmAll();
+ *
  *   // On process startup:
  *   replayOnStartup();
  */
 
-const { startTimer, cancelTimer, replayPersistedTimers } = require('./timer');
+const { startTimer, cancelTimer, cancelAllTimers, replayPersistedTimers } = require('./timer');
 const { runEscalation } = require('./alert');
 
 function arm(id, message, step) {
@@ -27,8 +30,12 @@ function disarm(id) {
   cancelTimer(id);
 }
 
+function disarmAll() {
+  return cancelAllTimers();
+}
+
 function replayOnStartup() {
   replayPersistedTimers(runEscalation);
 }
 
-module.exports = { arm, disarm, replayOnStartup };
+module.exports = { arm, disarm, disarmAll, replayOnStartup };
