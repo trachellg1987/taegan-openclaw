@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -m json.tool)",
+      "Bash(npm install:*)",
+      "Bash(npm test:*)",
+      "Bash(ls /Users/chellebelle/taegan-openclaw/*.example /Users/chellebelle/taegan-openclaw/.env.example)",
+      "Bash(node --check /Users/chellebelle/taegan-openclaw/src/scrapers/gmail.js)",
+      "Bash(node --check /Users/chellebelle/taegan-openclaw/src/scrapers/snapshot.js)",
+      "Bash(node --check /Users/chellebelle/taegan-openclaw/src/scrapers/classlink.js)",
+      "Bash(node --check /Users/chellebelle/taegan-openclaw/src/index.js)",
+      "Bash(node --check /Users/chellebelle/taegan-openclaw/src/scrapers/index.js)",
+      "Bash(bash -n /Users/chellebelle/taegan-openclaw/scripts/start.sh)",
+      "Bash(ls -la /Users/chellebelle/taegan-openclaw/test/*.test.js)",
+      "Bash(grep -r \"describe\\\\|test\\\\|it\\(\" /Users/chellebelle/taegan-openclaw/test/*.test.js)",
+      "Bash(timeout 5 node src/bot.js)",
+      "Bash(node:*)",
+      "Bash(npm uninstall:*)"
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Unique identifier for this LaunchAgent -->
+  <key>Label</key>
+  <string>com.taegan.openclaw</string>
+
+  <!-- Command to run — setup.sh patches __PROJECT_DIR__ at install time -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__PROJECT_DIR__/scripts/start.sh</string>
+  </array>
+
+  <!-- Start automatically when the user logs in / on reboot -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- Restart the process if it crashes -->
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- Log stdout and stderr -->
+  <key>StandardOutPath</key>
+  <string>__HOME__/.openclaw/logs/openclaw.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>__HOME__/.openclaw/logs/openclaw.stderr.log</string>
+
+  <!-- Working directory -->
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_DIR__</string>
+
+  <!-- Throttle restart attempts to avoid a crash loop -->
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+</dict>
+</plist>

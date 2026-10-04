@@ -1,0 +1,10 @@
+# Taegan OpenClaw — Build Progress
+# Format: [STORY-ID] [YYYY-MM-DD] [status] [notes]
+
+[CFG-005] [2026-03-31] [complete] [LaunchAgent plist + health-monitor.js: 5-min cron, 3-failure iMessage alert to parent]
+[CFG-006] [2026-03-31] [complete] [start.sh: Node/npm/config/gateway/Ollama/cron-job pre-flight checks; health-check.sh: 4 checks; setup.sh: 8-step fresh-Mac installer]
+[DEP-001] [2026-03-31] [complete] [DEPLOYMENT.md: step-by-step guide incl. Gmail OAuth setup (Step 4a) and 8-item verification checklist]
+[DC-003]  [2026-03-31] [complete] [src/scrapers/gmail.js: OAuth2 Gmail poll every 30 min weekdays, filters Canvas/Classroom, iMessage summary to parent; skips silently if creds absent]
+[DC-005]  [2026-03-31] [complete] [src/scrapers/snapshot.js: dated snapshots after each scraper run, new-missing-assignment alert, 30-day prune; wired into runAllScrapers()]
+[DEP-002] [2026-03-31] [complete] [Full test suite: 194 tests, 12 suites — covers all 10 required items: canvas/skyward shape, iMessage approve/block, escalation timer, Twilio sandbox, parent alert, health-check, snapshot save/compare, push-up progression. Plus gmail.test.js for DC-003]
+

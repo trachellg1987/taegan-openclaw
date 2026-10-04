@@ -1,0 +1,56 @@
+# Taegan OpenClaw — Schedule and Contact Configuration
+# Copy to config.yaml and fill in real values. Do NOT commit config.yaml.
+
+# ─── Schedule ────────────────────────────────────────────────────────────────
+
+morning:
+  wake_time: "06:00"          # MR-001 first message
+  depart_time: "07:10"        # MR-010 pack and depart
+  blackout_after: "07:30"     # No messages until after-school
+
+after_school:
+  idle_start: "16:45"         # AS-001 decompression buffer begins
+  routine_start: "17:15"      # AS-002 first message
+  end_buffer_start: "18:25"   # AS-008 free time begins
+  blackout_after: "18:45"     # No messages until nighttime
+
+nighttime:
+  exercise_time: "20:45"      # NT-001 dumbbell workout
+  shower_time: "21:15"        # NT-002 shower
+  brush_time: "21:30"         # NT-003 brush teeth
+  tidy_time: "21:40"          # NT-004 tidy room
+  screen_off_time: "21:50"    # NT-005 MANDATORY ESCALATION
+  lights_out_time: "22:30"    # NT-006 lights out
+
+# ─── Contacts ────────────────────────────────────────────────────────────────
+
+taegan_phone: "+1XXXXXXXXXX"   # Taegan's iMessage/phone number
+parent_phone: "+1XXXXXXXXXX"   # Parent iMessage/phone number
+
+# Only these numbers may receive iMessage or Twilio calls.
+# CFG-003: any number not in this list is blocked and logged.
+approved_contacts:
+  - "+1XXXXXXXXXX"   # Taegan
+  - "+1XXXXXXXXXX"   # Parent
+
+# ─── Morning Routine ─────────────────────────────────────────────────────────
+
+# Apple Music / Spotify playlist URL sent with the 6:00 AM wake-up message.
+# Leave blank and no link is appended. Fill in once you have a playlist ready.
+taegan_playlist_url: ""
+
+# Push-up week number — controls progressive rep count.
+# Week 1 = 10 reps, Week 2 = 13, Week 3 = 16, Week 4 = 19, and so on (+3/week).
+# Increment this by 1 every Monday morning.
+pushup_week: 1
+
+# ─── Practice and Games ──────────────────────────────────────────────────────
+
+# Days of week with after-school practice (0=Sun, 1=Mon, ... 6=Sat)
+practice_days: [1, 2, 3, 4]   # Mon–Thu example
+
+# Dates with games — Taegan needs gear bag reminder
+# Format: YYYY-MM-DD
+game_schedule:
+  - "2026-04-05"
+  - "2026-04-12"
