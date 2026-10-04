@@ -44,11 +44,13 @@ log "Config files: OK"
 if curl -sf --max-time 3 http://127.0.0.1:18789/ >/dev/null 2>&1; then
   log "OpenClaw gateway: running on port 18789"
 else
-  log "WARNING: OpenClaw gateway not responding on port 18789 — iMessage may not work until it starts"
+  log "WARNING: OpenClaw gateway not responding on port 18789 — the AI assistant may not work until it starts"
 fi
 
 # ── 5. Ollama (warning only) ──────────────────────────────────────────────────
-if curl -sf --max-time 3 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+if ! command -v ollama >/dev/null 2>&1; then
+  log "Ollama: not installed (using hosted model)"
+elif curl -sf --max-time 3 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
   log "Ollama: running"
 else
   log "WARNING: Ollama not responding on port 11434"

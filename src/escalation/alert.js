@@ -1,10 +1,10 @@
 'use strict';
 
 /**
- * ESC-003: Voicemail fallback — parent iMessage alert.
+ * ESC-003: Voicemail fallback — parent SMS alert.
  * ESC-004: Append-only escalation log.
  *
- * Called when a Twilio call goes unanswered. Sends a concise iMessage
+ * Called when a Twilio call goes unanswered. Sends a concise SMS
  * to parent_phone and appends to the escalation log.
  */
 
@@ -52,7 +52,7 @@ function alertParent(step, message) {
     `Step: ${step}\n` +
     `Missed: "${message}"\n` +
     `Time: ${ts}\n` +
-    `Taegan did not respond to iMessage or Twilio call.`;
+    `Taegan did not respond to text message or Twilio call.`;
 
   sendMessage(config.parent_phone, text);
 

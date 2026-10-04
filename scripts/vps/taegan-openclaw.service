@@ -1,0 +1,23 @@
+# systemd unit for Taegan OpenClaw on the VPS.
+# Installed to /etc/systemd/system/taegan-openclaw.service by setup-vps.sh.
+[Unit]
+Description=Taegan OpenClaw executive functioning system
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=openclaw
+Group=openclaw
+WorkingDirectory=/home/openclaw/taegan-openclaw
+Environment=NODE_ENV=production
+Environment=TZ=America/Chicago
+Environment=HOME=/home/openclaw
+ExecStart=/bin/bash /home/openclaw/taegan-openclaw/scripts/start.sh
+Restart=always
+RestartSec=30
+StandardOutput=append:/home/openclaw/.openclaw/logs/openclaw.stdout.log
+StandardError=append:/home/openclaw/.openclaw/logs/openclaw.stderr.log
+
+[Install]
+WantedBy=multi-user.target
