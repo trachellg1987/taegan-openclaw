@@ -29,9 +29,10 @@ curl -fsSL -o setup-vps.sh \
 bash setup-vps.sh
 ```
 
-This installs Node 22, git, Playwright Chromium and OpenClaw 2026.9.7, clones the repo,
+This installs Node 24, git, Playwright Chromium and OpenClaw 2026.9.7, clones the repo,
 runs the tests, and installs the systemd service and the 5-minute watchdog cron. The app
-does not start yet because the secrets are missing.
+does not start yet because the secrets are missing. Re-running the script later never
+starts the app unless you pass `--start` (`bash setup-vps.sh --start`).
 
 ## 3. Copy secrets from the Mac (never through GitHub or chat)
 
