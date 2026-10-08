@@ -52,7 +52,9 @@ function alertParent(step, message) {
     `Step: ${step}\n` +
     `Missed: "${message}"\n` +
     `Time: ${ts}\n` +
-    `Taegan did not respond to text message or Twilio call.`;
+    (config.env && config.env.telegram_bot_token
+      ? `Taegan didn't respond on Telegram and the call to you wasn't answered.`
+      : `Taegan did not respond to text message or Twilio call.`);
 
   sendMessage(config.parent_phone, text);
 

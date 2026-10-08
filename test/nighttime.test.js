@@ -20,6 +20,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  require('../src/escalation/timer').cancelAllTimers();
   jest.useRealTimers();
 });
 
@@ -109,24 +110,29 @@ describe('NT-005 mandatory escalation', () => {
     expect(arm).not.toHaveBeenCalled();
   });
 
-  test('fire() for NT-005 calls runEscalation after 5 minutes', () => {
+  test('fire() for NT-005 sends a second nudge after 5 minutes, never a call', () => {
+    const { NUDGE_MESSAGE } = require('../src/routines/nighttime');
     const nt005 = SCHEDULE.find(e => e.id === 'NT-005');
     fire(nt005, BASE_CONFIG);
-    expect(runEscalation).not.toHaveBeenCalled();
+    expect(sendMessage).toHaveBeenCalledTimes(1);
 
     jest.advanceTimersByTime(5 * 60 * 1000);
-    expect(runEscalation).toHaveBeenCalledWith({
-      step: 'NT-005',
-      message: expect.stringContaining('phone down'),
-    });
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(sendMessage).toHaveBeenLastCalledWith(BASE_CONFIG.taegan_phone, NUDGE_MESSAGE);
+    expect(runEscalation).not.toHaveBeenCalled();
   });
 
-  test('NT-005 escalation fires even if called twice (no cancellation path)', () => {
+  test('no nudge when Taegan taps Done or replies within 5 minutes', () => {
+    const { cancelAllTimers } = require('../src/escalation/timer');
     const nt005 = SCHEDULE.find(e => e.id === 'NT-005');
     fire(nt005, BASE_CONFIG);
-    fire(nt005, BASE_CONFIG);
+
+    jest.advanceTimersByTime(2 * 60 * 1000);
+    cancelAllTimers();
     jest.advanceTimersByTime(5 * 60 * 1000);
-    expect(runEscalation).toHaveBeenCalledTimes(2);
+
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(runEscalation).not.toHaveBeenCalled();
   });
 });
 

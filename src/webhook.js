@@ -102,7 +102,7 @@ async function handleRequest(req, res) {
 function startWebhookServer() {
   const config = getConfig();
   if (!config.env.public_base_url) {
-    log('PUBLIC_BASE_URL not set — webhook disabled (replies will not cancel escalations)');
+    log('PUBLIC_BASE_URL not set — webhook disabled (SMS replies won\'t cancel escalations; calls use Twilio voice)');
     return null;
   }
   const port = Number(config.env.webhook_port) || 8080;

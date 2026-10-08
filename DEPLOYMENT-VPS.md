@@ -76,6 +76,29 @@ still always escalates. Escalation calls also use this server to play the Eleven
 Without `PUBLIC_BASE_URL`, everything else still works, but every routine
 text escalates to a call after 5 minutes and calls use Twilio's built-in voice.
 
+## 3c. Telegram reminders (Taegan has no phone number)
+
+Taegan's routine reminders arrive in Telegram from a **dedicated reminder bot**, each
+with a ✅ **Done** button. Tapping Done or replying cancels that escalation. If he
+doesn't respond within 5 minutes, **the parent gets a phone call** (Twilio voice
+calls don't need A2P approval). At 9:50 PM (NT-005) he gets a second nudge instead
+of a call. Parent alerts and summaries still go by SMS once A2P is approved.
+
+1. In Telegram, message **@BotFather** → `/newbot` → e.g. "Taegan Routine",
+   username `TaeganRoutineBot`. Keep this separate from the Taegbot (OpenClaw) bot.
+   Paste the token only into `.env`, never into a chat.
+2. In the Telegram account Taegan uses, open the new bot and tap **Start**.
+   Bots can't message an account until it has started the bot.
+3. Add to `/home/openclaw/taegan-openclaw/.env`:
+   ```
+   TELEGRAM_BOT_TOKEN=<token from BotFather>
+   TELEGRAM_CHAT_ID=<Taegan's Telegram user id>
+   ```
+   `taegan_phone` in `config.yaml` can stay a placeholder as long as it's in
+   `approved_contacts`; `parent_phone` must be the parent's real number.
+4. `systemctl restart taegan-openclaw`, then check the log shows
+   `[telegram] Listening for Done taps and replies`.
+
 ## 4. OpenClaw gateway and Claude API
 
 ```bash

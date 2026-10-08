@@ -133,3 +133,32 @@ describe('runEscalation: call failure', () => {
     expect(readLog().some(e => e.event === 'CALL_FAILED' && e.error === 'Twilio down')).toBe(true);
   });
 });
+
+// ─── Replay after restart: NT-005 nudges, never calls ─────────────────────────
+
+describe('replayOnStartup', () => {
+  test('expired NT-005 timer sends the nudge; other steps escalate', () => {
+    jest.isolateModules(() => {
+      jest.doMock('../src/escalation/timer', () => ({
+        startTimer: jest.fn(),
+        cancelTimer: jest.fn(),
+        cancelAllTimers: jest.fn(),
+        replayPersistedTimers: jest.fn(cb => {
+          cb({ id: 'a', step: 'NT-005', message: 'phone down' });
+          cb({ id: 'b', step: 'MR-001', message: 'Wake up!' });
+        }),
+      }));
+      jest.doMock('../src/escalation/alert', () => ({ runEscalation: jest.fn() }));
+      jest.doMock('../src/routines/nighttime', () => ({ sendNudge: jest.fn() }));
+
+      const { replayOnStartup } = require('../src/escalation');
+      replayOnStartup();
+
+      const { sendNudge } = require('../src/routines/nighttime');
+      const { runEscalation } = require('../src/escalation/alert');
+      expect(sendNudge).toHaveBeenCalledTimes(1);
+      expect(runEscalation).toHaveBeenCalledTimes(1);
+      expect(runEscalation).toHaveBeenCalledWith(expect.objectContaining({ step: 'MR-001' }));
+    });
+  });
+});

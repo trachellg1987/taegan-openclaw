@@ -1,7 +1,11 @@
 'use strict';
 
 /**
- * Outbound text messages via Twilio SMS.
+ * Outbound text messages via Twilio SMS — or Telegram for Taegan.
+ *
+ * When TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are set, messages to
+ * taegan_phone go to his Telegram chat (with a ✅ Done button) instead of SMS;
+ * everything else, e.g. parent alerts, still goes by SMS.
  *
  * Replaces the original macOS iMessage (osascript) sender so OpenClaw can run
  * on a Linux VPS. The module path and sendMessage(to, body) signature are kept
@@ -26,6 +30,8 @@ const LOG_FILE = path.join(LOG_DIR, 'imessage.log');
 
 // Twilio rejects bodies over 1600 characters; longer texts are sent in parts.
 const MAX_SMS_LENGTH = 1600;
+// Telegram's limit is 4096; stay under it.
+const MAX_TELEGRAM_LENGTH = 4000;
 
 function log(entry) {
   const line = JSON.stringify({ ...entry, ts: new Date().toISOString() }) + '\n';
@@ -41,14 +47,14 @@ function log(entry) {
  * Split text into chunks of at most MAX_SMS_LENGTH characters, preferring
  * line breaks, then spaces, so words and lines aren't cut in half.
  */
-function splitBody(body) {
+function splitBody(body, max = MAX_SMS_LENGTH) {
   const chunks = [];
   let rest = body;
-  while (rest.length > MAX_SMS_LENGTH) {
-    const window = rest.slice(0, MAX_SMS_LENGTH);
+  while (rest.length > max) {
+    const window = rest.slice(0, max);
     let cut = window.lastIndexOf('\n');
     if (cut <= 0) cut = window.lastIndexOf(' ');
-    if (cut <= 0) cut = MAX_SMS_LENGTH;
+    if (cut <= 0) cut = max;
     chunks.push(rest.slice(0, cut));
     rest = rest.slice(cut).replace(/^[\n ]/, '');
   }
@@ -82,8 +88,24 @@ async function deliver(client, from, to, body) {
   }
 }
 
+async function deliverTelegram(to, body) {
+  const telegram = require('./telegram');
+  const ids = [];
+  try {
+    for (const part of splitBody(body, MAX_TELEGRAM_LENGTH)) {
+      ids.push(await telegram.sendReminder(part));
+    }
+    log({ event: 'SENT', to, body, channel: 'telegram', ids });
+    return ids;
+  } catch (err) {
+    log({ event: 'FAILED', to, body, channel: 'telegram', ids, error: err.message, code: err.code });
+    process.stderr.write(`[telegram] Delivery failed: ${err.message}\n`);
+    return null;
+  }
+}
+
 /**
- * Send a text message via Twilio SMS.
+ * Send a text message via Twilio SMS (or Telegram for Taegan, see above).
  *
  * Enforces CFG-003: only approved_contacts from config.yaml may be contacted.
  * Unapproved numbers are blocked and logged — the message is never sent.
@@ -103,6 +125,10 @@ function sendMessage(to, body) {
   }
 
   const env = config.env || {};
+  if (to === config.taegan_phone && env.telegram_bot_token && env.telegram_chat_id) {
+    return deliverTelegram(to, body);
+  }
+
   if (!env.twilio_account_sid || !env.twilio_auth_token || !env.twilio_from_number) {
     log({ event: 'FAILED', to, body, channel: 'sms', error: 'Twilio not configured' });
     throw new Error(
@@ -114,4 +140,4 @@ function sendMessage(to, body) {
   return deliver(getClient(env), env.twilio_from_number, to, body);
 }
 
-module.exports = { sendMessage, splitBody, MAX_SMS_LENGTH };
+module.exports = { sendMessage, splitBody, MAX_SMS_LENGTH, MAX_TELEGRAM_LENGTH };

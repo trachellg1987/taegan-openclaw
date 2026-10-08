@@ -17,6 +17,7 @@ const { scheduleGmailMonitor } = require('./scrapers/gmail');
 const { scheduleDashboard } = require('./dashboard');
 const { scheduleHealthMonitor } = require('./health-monitor');
 const { startWebhookServer } = require('./webhook');
+const { startTelegramListener } = require('./telegram');
 
 function log(msg) {
   process.stdout.write(`[${new Date().toISOString()}] [openclaw] ${msg}\n`);
@@ -35,6 +36,9 @@ async function main() {
 
   // Inbound SMS replies (cancel escalations) and public TTS audio for calls
   startWebhookServer();
+
+  // Taegan's ✅ Done taps and replies to Telegram reminders
+  startTelegramListener();
 
   // Start all routine schedulers
   scheduleMorning();

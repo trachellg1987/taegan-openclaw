@@ -111,7 +111,7 @@ async function getPublicAudioUrl(message) {
  * Place the Twilio call.
  * Returns the call SID.
  */
-async function placeTwilioCall(twiml, onUnanswered) {
+async function placeTwilioCall(to, twiml, onUnanswered) {
   const config = getConfig();
   const twilio = require('twilio')(
     config.env.twilio_account_sid,
@@ -120,7 +120,7 @@ async function placeTwilioCall(twiml, onUnanswered) {
 
   const call = await twilio.calls.create({
     from: config.env.twilio_from_number,
-    to: config.taegan_phone,
+    to,
     twiml,
     timeout: 30, // seconds before Twilio gives up
   });
@@ -153,13 +153,24 @@ async function placeTwilioCall(twiml, onUnanswered) {
 /**
  * ESC-002 entry point.
  *
- * @param {string}   message     - Original message text to read aloud
+ * Calls Taegan, or the parent when reminders go to Telegram.
+ *
+ * @param {string}   message     - Original reminder text to read aloud
  * @param {string}   step        - PRD story ID (e.g. "MR-001")
  * @param {Function} onUnanswered - Called with { step, message } if call unanswered
  */
 async function escalateCall(message, step, onUnanswered) {
-  const audioUrl = await getPublicAudioUrl(message);
-  await placeTwilioCall(buildTwiml(message, audioUrl), () => {
+  const config = getConfig();
+  // With Telegram reminders Taegan has no phone number to call, so the
+  // parent gets the call instead, with the missed reminder read out.
+  const callParent = Boolean(config.env.telegram_bot_token && config.env.telegram_chat_id);
+  const to = callParent ? config.parent_phone : config.taegan_phone;
+  const spoken = callParent
+    ? `This is Taegbot. Taegan hasn't responded to his reminder: ${message}`
+    : message;
+
+  const audioUrl = await getPublicAudioUrl(spoken);
+  await placeTwilioCall(to, buildTwiml(spoken, audioUrl), () => {
     onUnanswered({ step, message });
   });
 }

@@ -14,6 +14,7 @@ const { getConfig } = require('../src/config');
 
 const TEST_CONFIG = {
   taegan_phone: '+15550000002',
+  parent_phone: '+15550000003',
   env: {
     twilio_account_sid: 'ACtest1234567890',
     twilio_auth_token:  'authtokentest',
@@ -178,6 +179,18 @@ describe('ESC-002: Twilio call placed (sandbox mock)', () => {
   test('message text is XML-escaped in the twiml', () => {
     const { buildTwiml } = require('../src/escalation/call');
     expect(buildTwiml('Tom & Jerry <now>', null)).toContain('Tom &amp; Jerry &lt;now&gt;');
+  });
+
+  test('with Telegram reminders, the call goes to the parent with context', async () => {
+    getConfig.mockReturnValue({
+      ...TEST_CONFIG,
+      env: { ...TEST_CONFIG.env, public_base_url: '', telegram_bot_token: 't', telegram_chat_id: '1' },
+    });
+    await escalateCall('Brush your teeth.', 'NT-003', jest.fn());
+
+    const args = mockCallsCreate.mock.calls[0][0];
+    expect(args.to).toBe(TEST_CONFIG.parent_phone);
+    expect(args.twiml).toContain("Taegan hasn&apos;t responded to his reminder: Brush your teeth.");
   });
 
   test('onUnanswered fires when call status is no-answer', async () => {

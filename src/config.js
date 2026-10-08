@@ -80,6 +80,8 @@ function loadConfig() {
       classlink_pass: process.env.CLASSLINK_PASS,
       public_base_url: (process.env.PUBLIC_BASE_URL || '').replace(/\/+$/, ''),
       webhook_port: process.env.WEBHOOK_PORT,
+      telegram_bot_token: process.env.TELEGRAM_BOT_TOKEN,
+      telegram_chat_id: process.env.TELEGRAM_CHAT_ID,
     }),
   });
 }

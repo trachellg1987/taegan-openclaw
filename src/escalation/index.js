@@ -35,7 +35,14 @@ function disarmAll() {
 }
 
 function replayOnStartup() {
-  replayPersistedTimers(runEscalation);
+  replayPersistedTimers(entry => {
+    // NT-005 nudges Taegan again rather than escalating to a call
+    if (entry.step === 'NT-005') {
+      require('../routines/nighttime').sendNudge();
+    } else {
+      runEscalation(entry);
+    }
+  });
 }
 
 module.exports = { arm, disarm, disarmAll, replayOnStartup };

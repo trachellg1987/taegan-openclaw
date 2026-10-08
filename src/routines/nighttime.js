@@ -10,7 +10,7 @@
  *   NT-003     21:30  Brush teeth
  *   NT-004     21:40  Tidy room
  *   NT-LAUNDRY 21:45  Dirty laundry — FRIDAY ONLY
- *   NT-005     21:50  Screen off — MANDATORY ESCALATION (hardcoded, no exceptions)
+ *   NT-005     21:50  Screen off — second nudge if no response in 5 min (no call)
  *   NT-006     22:30  Lights out — warm positive tone
  *   [blackout after 22:30 until 6:00 AM]
  */
@@ -18,10 +18,10 @@
 const cron = require('node-cron');
 const { sendMessage } = require('../imessage');
 const { arm } = require('../escalation');
-const { runEscalation } = require('../escalation/alert');
+const { startTimer } = require('../escalation/timer');
 const { getConfig } = require('../config');
 
-const MANDATORY_DELAY_MS = 5 * 60 * 1000; // 5 minutes, hardcoded
+const NUDGE_MESSAGE = "Taegan, it's past screen-off time. Phone down now, please. 🌙";
 
 // ─── Schedule definition ──────────────────────────────────────────────────────
 
@@ -55,7 +55,7 @@ const SCHEDULE = [
   {
     id: 'NT-005',
     cron: '0 50 21 * * *',
-    mandatoryEscalation: true, // HARDCODED — always escalates, read receipts ignored
+    mandatoryEscalation: true, // nudges again instead of calling the parent
     getMessage: () => 'Start winding down and put the phone down.',
   },
   {
@@ -65,6 +65,11 @@ const SCHEDULE = [
   },
 ];
 
+/** NT-005 follow-up when Taegan hasn't responded. Also used for replayed timers. */
+function sendNudge() {
+  sendMessage(getConfig().taegan_phone, NUDGE_MESSAGE);
+}
+
 // ─── Fire a single step ───────────────────────────────────────────────────────
 
 function fire(entry, config) {
@@ -72,9 +77,9 @@ function fire(entry, config) {
   sendMessage(config.taegan_phone, message);
 
   if (entry.mandatoryEscalation) {
-    // NT-005: unconditional — always escalates after 5 min regardless of read status.
-    // Does NOT use arm/disarm — this timer cannot be cancelled.
-    setTimeout(() => runEscalation({ step: entry.id, message }), MANDATORY_DELAY_MS);
+    // NT-005: no phone call. If Taegan hasn't tapped Done or replied within
+    // 5 min, he gets a firmer second nudge instead.
+    startTimer(`${entry.id}-${Date.now()}`, message, entry.id, sendNudge);
   } else {
     arm(`${entry.id}-${Date.now()}`, message, entry.id);
   }
@@ -99,6 +104,8 @@ function stopNighttime() {
 }
 
 module.exports = {
+  sendNudge,
+  NUDGE_MESSAGE,
   scheduleNighttime,
   stopNighttime,
   SCHEDULE,
