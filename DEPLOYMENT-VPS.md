@@ -99,6 +99,26 @@ of a call. Parent alerts and summaries still go by SMS once A2P is approved.
 4. `systemctl restart taegan-openclaw`, then check the log shows
    `[telegram] Listening for Done taps and replies`.
 
+## 3d. Parent messages by email (no A2P needed)
+
+Nightly summaries, grade and missing-assignment alerts, health alerts and reports go
+to the parent's **email** instead of SMS. Urgent "Taegan didn't respond" escalations
+stay **phone calls**. With this set, the Twilio A2P campaign isn't needed.
+
+1. Turn on 2-Step Verification for the sending Gmail account, then create an
+   **app password** at myaccount.google.com/apppasswords (name it "Taegbot").
+   Google shows a 16-character password once. Paste it only into `.env`.
+2. Add to `/home/openclaw/taegan-openclaw/.env`:
+   ```
+   SMTP_USER=<sending gmail address>
+   SMTP_PASS=<16-character app password, no spaces>
+   PARENT_EMAIL=<where alerts should arrive>
+   ```
+3. `systemctl restart taegan-openclaw`, then send a test:
+   ```bash
+   sudo -iu openclaw bash -c "cd taegan-openclaw && node -e \"const c=require('./src/config').getConfig(); require('./src/imessage').sendMessage(c.parent_phone, 'Taegbot email test').then(r => console.log(r ? 'SENT' : 'FAILED — see stderr'))\""
+   ```
+
 ## 4. OpenClaw gateway and Claude API
 
 ```bash
