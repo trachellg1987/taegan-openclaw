@@ -6,11 +6,13 @@
  * Schedule (weekdays, America/Chicago):
  *   AS-001  16:45–17:15  Idle buffer — 30 min decompression, NO messages
  *   AS-002  17:15        Drink 2 full bottles of water
+ *   AS-WASH 17:17        Wash jersey (only the school day before a game)
  *   AS-003  17:20        Protein-rich meal
  *   AS-004  17:35        Skyward PFISD check (+ missing count if scraper data available)
  *   AS-005  17:45        Canvas check (+ nearest due date if scraper data available)
  *   AS-006  17:55        School email, English portal, Google Classroom
- *   AS-007  18:10        Folder + backpack (+ gear bag reminder if practice/game tomorrow)
+ *   AS-007  18:10        Folder + backpack (+ gear bag if practice/game tomorrow,
+ *                        + clean jersey if game next school day)
  *   AS-008  18:25–18:45  End buffer — free time, NO messages
  */
 
@@ -20,6 +22,7 @@ const cron = require('node-cron');
 const { sendMessage } = require('../imessage');
 const { arm } = require('../escalation');
 const { getConfig } = require('../config');
+const { localDateKey, isGameNextSchoolDay } = require('./game-days');
 
 const WORKSPACE = path.join(process.env.HOME, '.openclaw', 'workspace');
 
@@ -74,11 +77,9 @@ function getCanvasNearestDue() {
  * Returns true if the given date is a practice day or a scheduled game day.
  */
 function isGearDay(config, date = new Date()) {
-  const dayOfWeek = date.getDay();
-  const dateStr = date.toISOString().slice(0, 10);
   return (
-    config.practice_days.includes(dayOfWeek) ||
-    config.game_schedule.includes(dateStr)
+    config.practice_days.includes(date.getDay()) ||
+    config.game_schedule.includes(localDateKey(date))
   );
 }
 
@@ -101,6 +102,15 @@ function buildSchedule(config, _now) {
       id: 'AS-002',
       cron: '0 15 17 * * 1-5',
       getMessage: () => 'Drink 2 full bottles of water right now.',
+    },
+    {
+      id: 'AS-WASH',
+      cron: '0 17 17 * * 1-5',
+      // Only on the school day before a game (Friday for a Monday game)
+      getMessage: () =>
+        isGameNextSchoolDay(config, _now || new Date())
+          ? 'Game next school day — put your jersey in the wash now so it\'s ready.'
+          : null,
     },
     {
       id: 'AS-003',
@@ -137,10 +147,10 @@ function buildSchedule(config, _now) {
       id: 'AS-007',
       cron: '0 10 18 * * 1-5',
       getMessage: () => {
-        const base = 'Check your folder and organize your backpack for tomorrow.';
-        return isGearDayTomorrow(config, _now)
-          ? `${base} Pack your gear bag tonight.`
-          : base;
+        let msg = 'Check your folder and organize your backpack for tomorrow.';
+        if (isGearDayTomorrow(config, _now)) msg += ' Pack your gear bag tonight.';
+        if (isGameNextSchoolDay(config, _now || new Date())) msg += ' Pack your clean jersey for the game.';
+        return msg;
       },
     },
 
@@ -152,6 +162,7 @@ function buildSchedule(config, _now) {
 
 function fire(entry, config) {
   const message = entry.getMessage();
+  if (message == null) return; // conditional step that doesn't apply today
   const id = `${entry.id}-${Date.now()}`;
   sendMessage(config.taegan_phone, message);
   arm(id, message, entry.id);

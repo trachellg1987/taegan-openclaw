@@ -9,6 +9,7 @@
  * Output shape:
  * {
  *   scrapedAt: "ISO string",
+ *   dayType: "A" | "B" | null,   // today's A/B rotation day, if Skyward shows it
  *   grades: [
  *     { course: string, grade: string, percent: number | null }
  *   ],
@@ -53,6 +54,9 @@ async function scrapeSkyward() {
       f.url().includes('gradebookSummary')
     ) || skywardPage;
 
+    // Read the A/B day from the landing page before navigating away
+    const dayType = await scrapeDayType(skywardPage);
+
     // Navigate to Family Access / Gradebook view
     // ADJUST SELECTOR: Skyward menu link text varies — look for "Gradebook" or "Grade"
     const gradebookLink = contentFrame.locator(
@@ -72,6 +76,7 @@ async function scrapeSkyward() {
 
     const output = {
       scrapedAt: new Date().toISOString(),
+      dayType,
       grades,
       missing,
     };
@@ -82,6 +87,37 @@ async function scrapeSkyward() {
   } finally {
     await browser.close();
   }
+}
+
+/**
+ * Find today's A/B rotation day ("A Day", "B-Day", "Day B"…) in any frame.
+ * Returns "A", "B", or null when no single answer is found.
+ *
+ * ADJUST SELECTOR: this searches all page text because the exact element that
+ * shows the rotation day varies by district. If it returns null or the wrong
+ * day, find where Skyward shows "A Day"/"B Day" and target that element.
+ */
+async function scrapeDayType(page) {
+  const texts = [];
+  for (const frame of page.frames()) {
+    try {
+      texts.push(await frame.evaluate(() => document.body ? document.body.innerText : ''));
+    } catch {
+      // Detached or cross-origin frame — skip it
+    }
+  }
+  return parseDayType(texts.join('\n'));
+}
+
+function parseDayType(text) {
+  const found = new Set();
+  const re = /\b(?:([AB])[\s-]?Day|Day[\s-]?([AB]))\b/gi;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    found.add((m[1] || m[2]).toUpperCase());
+  }
+  // Both A and B on the page (e.g. a calendar listing) is ambiguous
+  return found.size === 1 ? [...found][0] : null;
 }
 
 async function scrapeGrades(frame) {
@@ -171,4 +207,4 @@ async function scrapeMissing(frame) {
   });
 }
 
-module.exports = { scrapeSkyward, scrapeGrades, scrapeMissing };
+module.exports = { scrapeSkyward, scrapeGrades, scrapeMissing, scrapeDayType, parseDayType };

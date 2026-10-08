@@ -43,34 +43,25 @@ describe('buildSchedule', () => {
     const ids = schedule.map(e => e.id);
     ['MR-001', 'MR-002', 'MR-003', 'MR-004', 'MR-005',
      'MR-006', 'MR-008', 'MR-010',
-     'MR-KNEE', 'MR-WATER'].forEach(id => {
+     'MR-KNEE', 'MR-DEPART'].forEach(id => {
       expect(ids).toContain(id);
     });
   });
 
-  test('no messages scheduled during idle buffer 06:55–07:10', () => {
+  test('all messages fall between 06:45 wake-up and 07:30 departure', () => {
     const schedule = buildSchedule(BASE_CONFIG);
-    const idleTimes = schedule
-      .map(e => e.cron)
-      .filter(c => {
-        // Parse "0 MM HH * * 1-5" — check if time falls in 06:55–07:09
-        const [, min, hr] = c.split(' ');
-        const totalMin = parseInt(hr) * 60 + parseInt(min);
-        return totalMin >= 6 * 60 + 55 && totalMin < 7 * 60 + 10;
-      });
-    expect(idleTimes).toHaveLength(0);
+    schedule.forEach(entry => {
+      const [, min, hr] = entry.cron.split(' ');
+      const totalMin = parseInt(hr) * 60 + parseInt(min);
+      expect(totalMin).toBeGreaterThanOrEqual(6 * 60 + 45);
+      expect(totalMin).toBeLessThanOrEqual(7 * 60 + 30);
+    });
   });
 
-  test('no messages scheduled after 07:30 blackout', () => {
+  test('MR-001 is at 06:45 and MR-DEPART at 07:30', () => {
     const schedule = buildSchedule(BASE_CONFIG);
-    const afterBlackout = schedule
-      .map(e => e.cron)
-      .filter(c => {
-        const [, min, hr] = c.split(' ');
-        const totalMin = parseInt(hr) * 60 + parseInt(min);
-        return totalMin >= 7 * 60 + 30;
-      });
-    expect(afterBlackout).toHaveLength(0);
+    expect(schedule.find(e => e.id === 'MR-001').cron).toBe('0 45 6 * * 1-5');
+    expect(schedule.find(e => e.id === 'MR-DEPART').cron).toBe('0 30 7 * * 1-5');
   });
 
   test('all entries are weekday-only crons (1-5)', () => {
@@ -129,7 +120,7 @@ describe('MR-010 gear reminder', () => {
     // Temporarily override isGearDay by using a custom config with no days
     const msg = buildSchedule({ ...BASE_CONFIG, practice_days: [], game_schedule: [] })
       .find(e => e.id === 'MR-010').getMessage();
-    expect(msg).toBe('Pack your backpack and head out!');
+    expect(msg).toBe('Pack your backpack and grab your 4 waters.');
     expect(msg).not.toContain('gear bag');
   });
 
@@ -155,7 +146,37 @@ describe('MR-010 gear reminder', () => {
   });
 });
 
-// ─── MR-KNEE and MR-WATER ─────────────────────────────────────────────────────
+describe('MR-010 every school day + jersey on game days', () => {
+  test('practice Mon–Fri → gear bag reminder on a Friday', () => {
+    const friday = new Date('2026-12-04T07:25:00');
+    expect(isGearDay({ ...BASE_CONFIG, practice_days: [1, 2, 3, 4, 5] }, friday)).toBe(true);
+  });
+
+  test('game day message mentions jersey', () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-12-01T07:25:00'));
+    try {
+      const msg = buildSchedule({ ...BASE_CONFIG, game_schedule: ['2026-12-01'] })
+        .find(e => e.id === 'MR-010').getMessage();
+      expect(msg).toContain('gear bag');
+      expect(msg).toContain('jersey');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('non-game day message has no jersey', () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-12-02T07:25:00'));
+    try {
+      const msg = buildSchedule({ ...BASE_CONFIG, game_schedule: ['2026-12-01'] })
+        .find(e => e.id === 'MR-010').getMessage();
+      expect(msg).not.toContain('jersey');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+// ─── MR-KNEE and waters ───────────────────────────────────────────────────────
 
 describe('custom reminders', () => {
   test('MR-KNEE mentions Peloton knee bands', () => {
@@ -164,9 +185,9 @@ describe('custom reminders', () => {
     expect(msg.toLowerCase()).toContain('knee bands');
   });
 
-  test('MR-WATER mentions 4 waters', () => {
-    const schedule = buildSchedule(BASE_CONFIG);
-    const msg = schedule.find(e => e.id === 'MR-WATER').getMessage();
+  test('MR-010 mentions 4 waters', () => {
+    const schedule = buildSchedule({ ...BASE_CONFIG, practice_days: [], game_schedule: [] });
+    const msg = schedule.find(e => e.id === 'MR-010').getMessage();
     expect(msg).toContain('4 waters');
   });
 });

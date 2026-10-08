@@ -204,9 +204,54 @@ describe('AS-007 backpack + gear reminder', () => {
 
 // ─── fire() wires sendMessage + arm ──────────────────────────────────────────
 
+// ─── Jersey: wash the school day before a game, pack it that evening ─────────
+
+describe('jersey reminders', () => {
+  const GAMES = { ...BASE_CONFIG, practice_days: [1, 2, 3, 4, 5], game_schedule: ['2026-12-01', '2026-11-23'] };
+  const wash = (now) => buildSchedule(GAMES, now).find(e => e.id === 'AS-WASH').getMessage();
+  const pack = (now) => buildSchedule(GAMES, now).find(e => e.id === 'AS-007').getMessage();
+
+  test('AS-WASH runs at 5:17 PM weekdays', () => {
+    expect(buildSchedule(GAMES).find(e => e.id === 'AS-WASH').cron).toBe('0 17 17 * * 1-5');
+  });
+
+  test('day before a Tuesday game → wash and pack jersey', () => {
+    const monday = new Date('2026-11-30T17:17:00');
+    expect(wash(monday)).toMatch(/jersey in the wash/);
+    expect(pack(monday)).toMatch(/clean jersey/);
+  });
+
+  test('Friday before a Monday game → wash and pack jersey', () => {
+    const friday = new Date('2026-11-20T17:17:00');
+    expect(wash(friday)).toMatch(/jersey in the wash/);
+    expect(pack(friday)).toMatch(/clean jersey/);
+  });
+
+  test('no game next school day → no wash message, no jersey in AS-007', () => {
+    const wednesday = new Date('2026-12-02T17:17:00');
+    expect(wash(wednesday)).toBeNull();
+    expect(pack(wednesday)).not.toMatch(/jersey/);
+  });
+
+  test('works after 7 PM CST when UTC is already the next day', () => {
+    // 18:10 CST on Mon 2026-11-30 is 00:10 UTC on Tue 2026-12-01
+    const evening = new Date('2026-11-30T18:10:00');
+    expect(pack(evening)).toMatch(/clean jersey/);
+    const gameEvening = new Date('2026-12-01T18:10:00');
+    expect(pack(gameEvening)).not.toMatch(/jersey/);
+  });
+
+  test('fire() skips AS-WASH on days it does not apply', () => {
+    const entry = buildSchedule(GAMES, new Date('2026-12-02T17:17:00')).find(e => e.id === 'AS-WASH');
+    fire(entry, GAMES);
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(arm).not.toHaveBeenCalled();
+  });
+});
+
 describe('fire()', () => {
   test('every schedule entry calls sendMessage and arm', () => {
-    const schedule = buildSchedule(BASE_CONFIG);
+    const schedule = buildSchedule(BASE_CONFIG).filter(e => e.id !== 'AS-WASH');
     schedule.forEach(entry => {
       jest.clearAllMocks();
       fire(entry, BASE_CONFIG);

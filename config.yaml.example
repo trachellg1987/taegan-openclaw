@@ -44,6 +44,22 @@ taegan_playlist_url: ""
 # Increment this by 1 every Monday morning.
 pushup_week: 1
 
+# ─── Class Reminders (SC-001) ────────────────────────────────────────────────
+
+# Sent as Taegan walks to each class: turn in work due, follow up with the
+# teacher about missing assignments. Today's A/B day comes from Skyward (6 AM
+# scrape); if it can't be found, a generic reminder goes out at the a_day times.
+# No escalation call for these.
+class_reminders:
+  a_day:
+    - { time: "11:05", class: "Debate" }
+    - { time: "13:05", class: "History" }
+    - { time: "14:42", class: "Engineering" }
+  b_day:
+    - { time: "11:05", class: "English" }
+    - { time: "13:05", class: "Chemistry" }
+    - { time: "14:43", class: "Algebra" }
+
 # ─── Practice and Games ──────────────────────────────────────────────────────
 
 # Days of week with after-school practice (0=Sun, 1=Mon, ... 6=Sat)

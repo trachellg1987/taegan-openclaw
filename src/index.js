@@ -12,6 +12,7 @@ const { replayOnStartup } = require('./escalation');
 const { scheduleMorning } = require('./routines/morning');
 const { scheduleAfterSchool } = require('./routines/afterschool');
 const { scheduleNighttime } = require('./routines/nighttime');
+const { scheduleSchool } = require('./routines/school');
 const { scheduleScrapers } = require('./scrapers');
 const { scheduleGmailMonitor } = require('./scrapers/gmail');
 const { scheduleDashboard } = require('./dashboard');
@@ -42,7 +43,10 @@ async function main() {
 
   // Start all routine schedulers
   scheduleMorning();
-  log('Morning routine scheduled (MR-001 – MR-010)');
+  log('Morning routine scheduled (MR-001 – MR-DEPART, 6:45–7:30 AM)');
+
+  const classTimes = scheduleSchool();
+  log(`Class reminders scheduled (SC-001, ${classTimes} passing-period times)`);
 
   scheduleAfterSchool();
   log('After-school routine scheduled (AS-001 – AS-008)');

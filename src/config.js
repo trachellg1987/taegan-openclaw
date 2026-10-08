@@ -63,6 +63,10 @@ function loadConfig() {
     game_schedule: raw.game_schedule || [],
     taegan_playlist_url: raw.taegan_playlist_url || '',
     pushup_week: typeof raw.pushup_week === 'number' ? raw.pushup_week : 1,
+    class_reminders: Object.freeze({
+      a_day: Object.freeze([...((raw.class_reminders || {}).a_day || [])]),
+      b_day: Object.freeze([...((raw.class_reminders || {}).b_day || [])]),
+    }),
     morning: Object.freeze(raw.morning),
     after_school: Object.freeze(raw.after_school),
     nighttime: Object.freeze(raw.nighttime),

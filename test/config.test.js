@@ -43,6 +43,18 @@ nighttime:
   lights_out_time: "22:30"
 `;
 
+  // These tests write and delete config.yaml in the project root, so move a
+  // real one aside and put it back afterwards
+  const BACKUP_PATH = `${YAML_PATH}.test-backup`;
+
+  beforeAll(() => {
+    if (fs.existsSync(YAML_PATH)) fs.renameSync(YAML_PATH, BACKUP_PATH);
+  });
+
+  afterAll(() => {
+    if (fs.existsSync(BACKUP_PATH)) fs.renameSync(BACKUP_PATH, YAML_PATH);
+  });
+
   beforeEach(() => {
     _resetConfig();
     Object.assign(process.env, validEnv);
