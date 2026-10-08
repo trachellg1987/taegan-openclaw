@@ -7,6 +7,9 @@
  * taegan_phone go to his Telegram chat (with a ✅ Done button) instead of SMS;
  * everything else, e.g. parent alerts, still goes by SMS.
  *
+ * When SMTP_USER, SMTP_PASS and PARENT_EMAIL are set, messages to
+ * parent_phone are emailed instead of texted (no A2P registration needed).
+ *
  * Replaces the original macOS iMessage (osascript) sender so OpenClaw can run
  * on a Linux VPS. The module path and sendMessage(to, body) signature are kept
  * so every caller works unchanged.
@@ -104,8 +107,21 @@ async function deliverTelegram(to, body) {
   }
 }
 
+async function deliverEmail(to, body) {
+  const email = require('./email');
+  try {
+    const id = await email.sendParentEmail(body);
+    log({ event: 'SENT', to, body, channel: 'email', ids: [id] });
+    return [id];
+  } catch (err) {
+    log({ event: 'FAILED', to, body, channel: 'email', error: err.message, code: err.code });
+    process.stderr.write(`[email] Delivery failed: ${err.message}\n`);
+    return null;
+  }
+}
+
 /**
- * Send a text message via Twilio SMS (or Telegram for Taegan, see above).
+ * Send a message via Twilio SMS, or Telegram (Taegan) / email (parent), see above.
  *
  * Enforces CFG-003: only approved_contacts from config.yaml may be contacted.
  * Unapproved numbers are blocked and logged — the message is never sent.
@@ -127,6 +143,9 @@ function sendMessage(to, body) {
   const env = config.env || {};
   if (to === config.taegan_phone && env.telegram_bot_token && env.telegram_chat_id) {
     return deliverTelegram(to, body);
+  }
+  if (to === config.parent_phone && env.smtp_user && env.smtp_pass && env.parent_email) {
+    return deliverEmail(to, body);
   }
 
   if (!env.twilio_account_sid || !env.twilio_auth_token || !env.twilio_from_number) {

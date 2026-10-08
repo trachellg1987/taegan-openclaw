@@ -82,6 +82,11 @@ function loadConfig() {
       webhook_port: process.env.WEBHOOK_PORT,
       telegram_bot_token: process.env.TELEGRAM_BOT_TOKEN,
       telegram_chat_id: process.env.TELEGRAM_CHAT_ID,
+      smtp_host: process.env.SMTP_HOST,
+      smtp_port: process.env.SMTP_PORT,
+      smtp_user: process.env.SMTP_USER,
+      smtp_pass: process.env.SMTP_PASS,
+      parent_email: process.env.PARENT_EMAIL,
     }),
   });
 }
