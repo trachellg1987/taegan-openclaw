@@ -59,7 +59,8 @@ async function loginViaClassLink(page, creds) {
   await page.fill('input[name="password"], input[type="password"]', classlink_pass);
 
   // Submit
-  await page.click('button[type="submit"], input[type="submit"]');
+  // PFISD's Sign In is <button type="button" id="signin">, not a submit button
+  await page.click('#signin, button[type="submit"], input[type="submit"]');
 
   // Wait for app launcher to confirm login succeeded
   // ADJUST SELECTOR: the ClassLink dashboard typically has an app grid or header
